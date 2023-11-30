@@ -16,7 +16,7 @@ import io
 from langchain.text_splitter import CharacterTextSplitter
 
 text_splitter = CharacterTextSplitter(
-    separator = "。",
+    separator = "\n",
     chunk_size = 300,
     chunk_overlap  = 20,
     length_function = len,
