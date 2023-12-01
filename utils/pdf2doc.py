@@ -6,7 +6,7 @@ import json
 from langchain.docstore.document import Document
 from langchain.vectorstores import Chroma
 from dotenv import load_dotenv
-from langchain.embeddings import HuggingFaceEmbeddings, SentenceTransformerEmbeddings
+
 import sys
 from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.vectorstores import Milvus
@@ -28,7 +28,14 @@ load_dotenv()
 
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+hf = HuggingFaceHubEmbeddings(
+    task="feature-extraction",
+    repo_id = repo_id,
+    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+)
+
 INDEX_NAME = os.getenv("INDEX_NAME")
 
 

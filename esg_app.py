@@ -6,7 +6,7 @@ from langchain.vectorstores import Chroma
 import re
 import os
 from utils.pdf2doc import toDocuments, extract_text_table
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceHubEmbeddings
 import sys
 if os.getenv("ENABLE_WATSONX").lower()=="false":
     from utils.esg_chain import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
@@ -17,7 +17,13 @@ st.set_page_config(page_title="ESG Report Checker", page_icon="💡")
 st.title("ESG 報告檢核項目列表")
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+
+hf = HuggingFaceHubEmbeddings(
+    task="feature-extraction",
+    repo_id = repo_id,
+    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+)
 
 items = framework()
 PDF_FOLDER=os.getenv("UPLOAD_FOLDER")
