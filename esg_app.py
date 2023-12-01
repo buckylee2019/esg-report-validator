@@ -1,13 +1,48 @@
 import streamlit as st
 import numpy as np
 import json
-from utils.esg_chain import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
-import re
+from langchain.vectorstores import Chroma
 
+import re
+import os
+from utils.pdf2doc import toDocuments, extract_text_table
+from langchain.embeddings import HuggingFaceEmbeddings
+import sys
+if os.getenv("ENABLE_WATSONX").lower()=="false":
+    from utils.esg_chain import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
+else:
+    from utils.esg_chain_wx import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
 
 st.set_page_config(page_title="ESG Report Checker", page_icon="💡")
 st.title("ESG 報告檢核項目列表")
+
+HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+
 items = framework()
+PDF_FOLDER=os.getenv("UPLOAD_FOLDER")
+
+with st.form("my-form", clear_on_submit=True):
+    uploaded_file = st.file_uploader("FILE UPLOADER")
+    submitted = st.form_submit_button("UPLOAD!")
+
+    if submitted and uploaded_file is not None:
+        st.write("UPLOADED!")
+        collection_name = uploaded_file.name.split('/')[-1].split('.')[0]
+        bytes_data = uploaded_file.getvalue()
+        fname_pdf = os.path.join(PDF_FOLDER,uploaded_file.name)
+        with open(fname_pdf,"wb") as f:
+            f.write(bytes_data)
+        
+        extracted = extract_text_table(fname_pdf)
+        index = Chroma.from_documents(
+                    documents=toDocuments([extracted['text']]),
+                    embedding=embeddings,
+                    collection_name=collection_name,
+                    persist_directory=os.environ.get("INDEX_NAME")
+                )
+        os.remove(fname_pdf)
+        uploaded_file = None
 
 collection = st.sidebar.selectbox('ESG 報告',set(get_collection_list()))
 
