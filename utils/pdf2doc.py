@@ -30,7 +30,7 @@ load_dotenv()
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-hf = HuggingFaceHubEmbeddings(
+embeddings = HuggingFaceHubEmbeddings(
     task="feature-extraction",
     repo_id = repo_id,
     huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
