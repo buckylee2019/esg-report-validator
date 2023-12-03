@@ -3,7 +3,9 @@ FROM python:3.11-slim
 
 # Install browsers
 RUN apt-get update && apt-get install build-essential -y
+RUN apt-get install -y curl wget git
 # Declare working directory
+
 WORKDIR /app
 
 COPY . .

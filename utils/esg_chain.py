@@ -39,7 +39,7 @@ class vectorDB():
         vectorstore = Chroma(
                         embedding_function=embeddings,
                         collection_name=self.collection_name,
-                        persist_directory=os.environ.get("INDEX_NAME")
+                        persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
                     
             )
         return vectorstore
@@ -60,7 +60,7 @@ def _combine_documents(
     return document_separator.join(doc_strings)
 
 def get_collection_list():
-    client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME"))
+    client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME","/app/ESG_REPORT"))
     return [cols.name for cols in client.list_collections() if cols.name!="GRI"]
 
 

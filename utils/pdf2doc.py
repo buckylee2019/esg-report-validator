@@ -115,13 +115,13 @@ if __name__ == '__main__':
                     documents=toDocuments([extracted['text']]),
                     embedding=embeddings,
                     collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME")
+                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
                 )
         else:
             docstore = Chroma(
                     embedding_function=embeddings,
                     collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME")
+                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
                 )
 
 

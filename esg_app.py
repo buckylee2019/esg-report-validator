@@ -26,7 +26,7 @@ embeddings = HuggingFaceHubEmbeddings(
 )
 
 items = framework()
-PDF_FOLDER=os.getenv("UPLOAD_FOLDER")
+PDF_FOLDER=os.getenv("UPLOAD_FOLDER","/app/pdfs/ESG")
 
 with st.form("my-form", clear_on_submit=True):
     uploaded_file = st.file_uploader("FILE UPLOADER")
@@ -45,7 +45,7 @@ with st.form("my-form", clear_on_submit=True):
                     documents=toDocuments([extracted['text']]),
                     embedding=embeddings,
                     collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME")
+                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
                 )
         os.remove(fname_pdf)
         uploaded_file = None
