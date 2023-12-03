@@ -10,8 +10,6 @@ WORKDIR /app
 
 COPY . .
 
-RUN mkdir -p pdfs
-RUN mkdir -p pdfs/ESG
 
 # Install any necessary packages specified in requirements.txt.
 RUN pip install -r requirements.txt

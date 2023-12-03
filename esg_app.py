@@ -27,7 +27,8 @@ embeddings = HuggingFaceHubEmbeddings(
 
 items = framework()
 PDF_FOLDER=os.getenv("UPLOAD_FOLDER","/app/pdfs/ESG")
-
+if not os.path.isdir(PDF_FOLDER): 
+    os.makedirs(PDF_FOLDER) 
 with st.form("my-form", clear_on_submit=True):
     uploaded_file = st.file_uploader("FILE UPLOADER")
     submitted = st.form_submit_button("UPLOAD!")
