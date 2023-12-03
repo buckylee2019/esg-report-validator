@@ -13,7 +13,7 @@ import os
 from langchain.chains import RetrievalQA
 from langchain.schema.runnable import RunnableMap
 from langchain.schema import format_document
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.chains import LLMChain
 from langchain.prompts import PromptTemplate
 from langchain.chains import SimpleSequentialChain
@@ -29,8 +29,14 @@ WX_MODEL = os.environ.get("WX_MODEL")
 creds = Credentials(os.environ.get("BAM_API_KEY"), "https://bam-api.res.ibm.com/v1")
 
 
+HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+embeddings = HuggingFaceHubEmbeddings(
+    task="feature-extraction",
+    repo_id = repo_id,
+    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+)
 class vectorDB():
     def __init__(self,collection) -> None:
         self.collection_name = collection

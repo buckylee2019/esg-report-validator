@@ -8,7 +8,7 @@ from langchain.vectorstores import Chroma
 from glob import glob
 import os
 from langchain.schema import format_document
-from langchain.embeddings import HuggingFaceEmbeddings
+from langchain.embeddings import HuggingFaceHubEmbeddings
 from langchain.prompts import PromptTemplate
 from operator import itemgetter
 from langchain.schema import StrOutputParser
@@ -33,8 +33,14 @@ else:
         "apikey": api_key 
     }
 
+HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-MiniLM-L12-v2")
+embeddings = HuggingFaceHubEmbeddings(
+    task="feature-extraction",
+    repo_id = repo_id,
+    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+)
 class vectorDB():
     def __init__(self,collection) -> None:
         self.collection_name = collection
