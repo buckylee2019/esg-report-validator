@@ -7,7 +7,7 @@ from genai.model import Credentials
 from genai.schemas import GenerateParams
 from genai.extensions.langchain.llm import LangChainInterface
 import json
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Milvus
 from glob import glob
 import os
 from langchain.chains import RetrievalQA
@@ -19,14 +19,13 @@ from langchain.prompts import PromptTemplate
 from langchain.chains import SimpleSequentialChain
 from operator import itemgetter
 from langchain.schema import StrOutputParser
-from langchain.chat_models import ChatOpenAI
-import chromadb
 
 load_dotenv()
 
 
 WX_MODEL = os.environ.get("WX_MODEL")
 creds = Credentials(os.environ.get("BAM_API_KEY"), "https://bam-api.res.ibm.com/v1")
+MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
 
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
@@ -42,11 +41,16 @@ class vectorDB():
         self.collection_name = collection
     def vectorstore(self):
         
-        vectorstore = Chroma(
-                        embedding_function=embeddings,
-                        collection_name=self.collection_name,
-                        persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
-                    
+        vectorstore = Milvus(
+            collection_name=self.collection_name,
+            embedding_function=embeddings,
+            connection_args=MILVUS_CONNECTION,
+            search_params = {
+                "metric_type": "COSINE", 
+                "offset": 5, 
+                "ignore_growing": False, 
+                "params": {"nprobe": 10}
+            }
             )
         return vectorstore
 
@@ -64,10 +68,6 @@ def _combine_documents(
 ):
     doc_strings = [f"Document {idx+1}. \n{format_document(doc, document_prompt)}" for idx, doc in enumerate(docs)]
     return document_separator.join(doc_strings)
-
-def get_collection_list():
-    client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME","/app/ESG_REPORT"))
-    return [cols.name for cols in client.list_collections() if cols.name!="GRI"]
 
 
 def GenerateEsgChain(user_prompt,vector_instance):

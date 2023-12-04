@@ -4,12 +4,12 @@ import fitz
 import os
 import json
 from langchain.docstore.document import Document
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Milvus
 from dotenv import load_dotenv
 
 import sys
 from langchain.embeddings import HuggingFaceHubEmbeddings
-from langchain.vectorstores import Milvus
+
 
 from dotenv import load_dotenv
 from glob import glob
@@ -29,6 +29,7 @@ load_dotenv()
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
 repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
 
 embeddings = HuggingFaceHubEmbeddings(
     task="feature-extraction",
@@ -37,14 +38,6 @@ embeddings = HuggingFaceHubEmbeddings(
 )
 
 INDEX_NAME = os.getenv("INDEX_NAME")
-
-
-# hf = HuggingFaceHubEmbeddings(
-#     task="feature-extraction",
-#     repo_id = repo_id,
-#     huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
-# )
-
 
 
 # STEP 2
@@ -111,18 +104,35 @@ if __name__ == '__main__':
 
         if not INDEXED:
             extracted = extract_text_table(pdf)
-            docstore = Chroma.from_documents(
-                    documents=toDocuments([extracted['text']]),
-                    embedding=embeddings,
-                    collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
-                )
+            docstore = Milvus.from_documents(
+            collection_name=collection_name,
+            documents=toDocuments([extracted['text']]),
+            embedding=embeddings,
+            index_params={
+                "metric_type":"COSINE",
+                "index_type":"IVF_FLAT",
+                "params":{"nlist":1024}
+                },
+            search_params = {
+                "metric_type": "COSINE", 
+                "offset": 5, 
+                "ignore_growing": False, 
+                "params": {"nprobe": 10}
+            },
+            connection_args=MILVUS_CONNECTION
+            )
         else:
-            docstore = Chroma(
-                    embedding_function=embeddings,
-                    collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
-                )
+            docstore = Milvus(
+            collection_name=collection_name,
+            embedding_function=embeddings,
+            connection_args=MILVUS_CONNECTION,
+            search_params = {
+                "metric_type": "COSINE", 
+                "offset": 5, 
+                "ignore_growing": False, 
+                "params": {"nprobe": 10}
+            }
+            )
 
 
     print(docstore.similarity_search("報導總部的所在位置:總部指的是一個組織的行政中心，其控制和指引組織本身。"))

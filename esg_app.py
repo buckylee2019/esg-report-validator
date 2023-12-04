@@ -1,7 +1,7 @@
 import streamlit as st
 import numpy as np
 import json
-from langchain.vectorstores import Chroma
+from langchain.vectorstores import Milvus
 
 import re
 import os
@@ -9,14 +9,17 @@ from utils.pdf2doc import toDocuments, extract_text_table
 from langchain.embeddings import HuggingFaceHubEmbeddings
 import sys
 if os.getenv("ENABLE_WATSONX").lower()=="false":
-    from utils.esg_chain import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
+    from utils.esg_chain import GenerateEsgChain, framework, vectorDB,TranslateChain,Generate
 else:
-    from utils.esg_chain_wx import GenerateEsgChain,framework,get_collection_list, vectorDB,TranslateChain,Generate
+    from utils.esg_chain_wx import GenerateEsgChain, framework, vectorDB,TranslateChain,Generate
+
+from utils.milvus_util import get_collection_list
 
 st.set_page_config(page_title="ESG Report Checker", page_icon="💡")
 st.title("ESG 報告檢核項目列表")
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
 repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
 embeddings = HuggingFaceHubEmbeddings(
@@ -42,12 +45,24 @@ with st.form("my-form", clear_on_submit=True):
             f.write(bytes_data)
         
         extracted = extract_text_table(fname_pdf)
-        index = Chroma.from_documents(
-                    documents=toDocuments([extracted['text']]),
-                    embedding=embeddings,
-                    collection_name=collection_name,
-                    persist_directory=os.environ.get("INDEX_NAME","/app/ESG_REPORT")
-                )
+
+        index = Milvus.from_documents(
+            collection_name=collection_name,
+            documents=toDocuments([extracted['text']]),
+            embedding=embeddings,
+            index_params={
+                "metric_type":"COSINE",
+                "index_type":"IVF_FLAT",
+                "params":{"nlist":1024}
+                },
+            search_params = {
+                "metric_type": "COSINE", 
+                "offset": 5, 
+                "ignore_growing": False, 
+                "params": {"nprobe": 10}
+            },
+            connection_args=MILVUS_CONNECTION
+            )
         os.remove(fname_pdf)
         uploaded_file = None
 
