@@ -10,3 +10,4 @@ urllib3==1.26.11
 rouge==1.0.1
 streamlit==1.24.1
 pymilvus
+huggingface_hub
