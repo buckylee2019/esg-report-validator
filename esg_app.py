@@ -2,16 +2,17 @@ import streamlit as st
 import numpy as np
 import json
 from langchain.vectorstores import Milvus
-
 import re
 import os
 from utils.pdf2doc import toDocuments, extract_text_table
 from langchain.embeddings import HuggingFaceHubEmbeddings
+
+
 import sys
 if os.getenv("ENABLE_WATSONX").lower()=="false":
-    from utils.esg_chain import GenerateEsgChain, framework, vectorDB,TranslateChain,Generate
+    from utils.esg_chain import ESGAssistant, framework, vectorDB,get_model_list
 else:
-    from utils.esg_chain_wx import GenerateEsgChain, framework, vectorDB,TranslateChain,Generate
+    from utils.esg_chain_wx import ESGAssistant, framework, vectorDB,get_model_list
 
 from utils.milvus_util import get_collection_list
 
@@ -67,7 +68,8 @@ with st.form("my-form", clear_on_submit=True):
         uploaded_file = None
 
 collection = st.sidebar.selectbox('ESG 報告',set(get_collection_list()))
-
+model_id = st.sidebar.selectbox('Choose Model',set(get_model_list()))
+esgassist = ESGAssistant(model_id=model_id)
 
 generate = st.button("AI 自動生成")
 st.write("Click to generate!")
@@ -88,7 +90,7 @@ if generate:
         st.divider()
         for it in items[key]:
             vector_esg = vectorDB(collection)
-            res = GenerateEsgChain(user_prompt=it,vector_instance=vector_esg.vectorstore())
+            res = esgassist.generate_esg_chain(user_prompt=it,vector_instance=vector_esg.vectorstore())
             try:
                 res_json = json.loads(res)
             except:
@@ -114,7 +116,7 @@ if generate:
                 'Please start the response with {"Question":"...\n'\
                 "AVOID new lines in JSON format!!!\n"\
                 "Valid JSON: [/INST]"
-                res_fix = Generate(prompt,stop_sequences=["}"])
+                res_fix = esgassist.generate(prompt,stop_sequences=["}"])
 
                 explanation_pt = r'"Explanation":[ |](.*?)\n'
                 answer_pt = r'"Answer":[ |](.*?)\n'
@@ -145,7 +147,7 @@ if generate:
                                 
                 with col3:
                     
-                    st.markdown(TranslateChain(res_json["Explanation"]))
+                    st.markdown(esgassist.translate_chain(res_json["Explanation"]))
                 with st.expander("查看參考來源"):
                     docs = vector_esg.vectorstore().similarity_search(it,k=3)
                     source_document = "\n\n".join([f"Document {idx+1}. \n{r.page_content}" for idx, r in enumerate(docs)])

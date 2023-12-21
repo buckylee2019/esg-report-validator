@@ -73,113 +73,114 @@ def get_collection_list():
     client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME","/app/ESG_REPORT"))
     return [cols.name for cols in client.list_collections() if cols.name!="GRI"]
 
+def get_model_list():
+    return [m for m in ModelTypes]
 
-def GenerateEsgChain(user_prompt,vector_instance):
-    
-    params = {
-    GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
-    GenParams.MIN_NEW_TOKENS: 30,
-    GenParams.MAX_NEW_TOKENS: 1024,
-    GenParams.TEMPERATURE: 0,
-    GenParams.STOP_SEQUENCES:["}\n\n","}\n"],
-    # GenParams.TOP_K: 100,
-    # GenParams.TOP_P: 1,
-    GenParams.REPETITION_PENALTY: 1
-}
+class ESGAssistant:
 
-    llm = Model(model_id="meta-llama/llama-2-70b-chat", credentials=creds, params=params, project_id=project_id).to_langchain()
+    def __init__(self, model_id):
+        self.creds = creds
+        self.project_id = project_id
+        self.model_id  = model_id
 
-    prompt = PromptTemplate.from_template(
-        '''[INST]<<SYS>>
-        You are an AI assistant responsible for guiding the review of an ESG (Environmental, Social, Governance) report. Follow the steps below:
-
-        Summarize the content from the provided documents, using the following JSON format:
-
-        {{
-        \"Question\": [Specify the question],
-        \"Explanation\": [Provide concise, question-specific information from the document, and indicate which document you use to summarize the answer],
-        \"Answer\": [Yes, No, or Need further confirmation]
-        }}
-        AVOID new lines and DO NOT include other information which is not in the context.
-        Note: If the document isn't mentioned in Explanation, Answer should be "Need human confirmation".
-        By adhering to these rules, you will assist the individuals in charge of reviewing the ESG report in obtaining accurate and valuable information.
-        <</SYS>>
-
-        % Documents
-        {summarize}
-        
-        Answer the {question} in JSON: [/INST]'''
-    )
-
-    # chain2 = (
-    #     {"summarize": qa_chain, "question":itemgetter("question")}
-    #     | prompt2
-    #     | llm
-    #     | StrOutputParser()
-    # )
-    qa_chain_esg = (
-        {
-            "summarize": itemgetter("question")|vector_instance.as_retriever(search_kwargs={'k': 3})| _combine_documents,
-            "question": itemgetter("question")
+    def generate_esg_chain(self, user_prompt, vector_instance):
+        params = {
+            GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
+            GenParams.MIN_NEW_TOKENS: 30,
+            GenParams.MAX_NEW_TOKENS: 1024,
+            GenParams.TEMPERATURE: 0,
+            GenParams.STOP_SEQUENCES: ["}\n\n", "}\n"],
+            GenParams.REPETITION_PENALTY: 1
         }
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
+        llm  = Model(model_id=self.model_id, credentials=self.creds, params=params,
+                    project_id=self.project_id).to_langchain()
 
-    return qa_chain_esg.invoke({"question": user_prompt}) 
-def TranslateChain(text):
-    
-    params = {
-    GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
-    GenParams.MIN_NEW_TOKENS: 1,
-    GenParams.MAX_NEW_TOKENS: 1024,
-    GenParams.TEMPERATURE: 0,
-    GenParams.STOP_SEQUENCES:["。\n\n","\n\n"],
-    GenParams.REPETITION_PENALTY: 1
-}
+        prompt = PromptTemplate.from_template(
+            '''[INST]<<SYS>>
+            You are an AI assistant responsible for guiding the review of an ESG (Environmental, Social, Governance) report. Follow the steps below:
 
-    llm = Model(model_id="meta-llama/llama-2-70b-chat", credentials=creds, params=params, project_id=project_id).to_langchain()
-    
+            Summarize the content from the provided documents, using the following JSON format:
 
-    prompt =  PromptTemplate.from_template("INST] <<SYS>>\n"\
-    "You are a helpful, respectful and honest assistant.\n"\
-    "Always answer as helpfully as possible, while being safe.\n"\
-    "Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content.\n"\
-    "Please ensure that your responses are socially unbiased and positive in nature.\n"\
-    "\n"\
-    "If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct.\n"\
-    "If you don't know the answer to a question, please don't share false information.\n"\
-    "\n"\
-    "Translate from English to Chinese as the following example:\n"\
-    "English: The Board of Directors is responsible for overseeing the bank's operations, including its financial performance, risk management, and corporate governance practices.\n"\
-    "Chinese: 董事會負責監督銀行的運營，包括財務績效、風險管理和公司治理實務。\n\n"\
-    "English: The board members' tenure is 3 years, and they can be re-elected for a maximum of 2 consecutive terms.\n"\
-    "Chinese: 董事會成員任期3年，最多可連任2屆。\n\n"\
-    "English: {original_text}\n"\
-    "Chinese: ")
-    trans = (
-        {"original_text": itemgetter("original_text")}
-        | prompt
-        | llm
-        | StrOutputParser()
-    )
-    return trans.invoke({"original_text": text}) 
-def Generate(prompt, stop_sequences = ["。\n\n","\n\n\n"]):
-    params = {
-    GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
-    GenParams.MIN_NEW_TOKENS: 1,
-    GenParams.MAX_NEW_TOKENS: 1024,
-    GenParams.TEMPERATURE: 0,
-    GenParams.STOP_SEQUENCES:stop_sequences,
-    GenParams.REPETITION_PENALTY: 1
-}
+            {{
+            \"Question\": [Specify the question],
+            \"Explanation\": [Provide concise, question-specific information from the document, and indicate which document you use to summarize the answer],
+            \"Answer\": [Yes, No, or Need further confirmation]
+            }}
+            AVOID new lines and DO NOT include other information which is not in the context.
+            Note: If the document isn't mentioned in Explanation, Answer should be "Need human confirmation".
+            By adhering to these rules, you will assist the individuals in charge of reviewing the ESG report in obtaining accurate and valuable information.
+            <</SYS>>
 
-    llm = Model(model_id="meta-llama/llama-2-70b-chat", credentials=creds, params=params, project_id=project_id).to_langchain()
+            % Documents
+            {summarize}
+
+            Answer the {question} in JSON: [/INST]'''
+        )
+
+        qa_chain_esg = (
+                {
+                    "summarize": itemgetter("question") | vector_instance.as_retriever(search_kwargs={'k': 3}) | _combine_documents,
+                    "question": itemgetter("question")
+                }
+                | prompt
+                | llm
+                | StrOutputParser()
+        )
+
+        return qa_chain_esg.invoke({"question": user_prompt})
+
+    def translate_chain(self, text):
+        params = {
+            GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
+            GenParams.MIN_NEW_TOKENS: 1,
+            GenParams.MAX_NEW_TOKENS: 1024,
+            GenParams.TEMPERATURE: 0,
+            GenParams.STOP_SEQUENCES: ["。\n\n", "\n\n"],
+            GenParams.REPETITION_PENALTY: 1
+        }
+
+        llm = Model(model_id=self.model_id, credentials=self.creds, params=params,
+                    project_id=self.project_id).to_langchain()
+
+        prompt = PromptTemplate.from_template("INST] <<SYS>>\n"
+                                             "You are a helpful, respectful and honest assistant.\n"
+                                             "Always answer as helpfully as possible, while being safe.\n"
+                                             "Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content.\n"
+                                             "Please ensure that your responses are socially unbiased and positive in nature.\n"
+                                             "\n"
+                                             "If a question does not make any sense, or is not factually coherent, explain why instead of answering something not correct.\n"
+                                             "If you don't know the answer to a question, please don't share false information.\n"
+                                             "\n"
+                                             "Translate from English to Chinese as the following example:\n"
+                                             "English: The Board of Directors is responsible for overseeing the bank's operations, including its financial performance, risk management, and corporate governance practices.\n"
+                                             "Chinese: 董事會負責監督銀行的運營，包括財務績效、風險管理和公司治理實務。\n\n"
+                                             "English: The board members' tenure is 3 years, and they can be re-elected for a maximum of 2 consecutive terms.\n"
+                                             "Chinese: 董事會成員任期3年，最多可連任2屆。\n\n"
+                                             "English: {original_text}\n"
+                                             "Chinese: ")
+        trans = (
+                {"original_text": itemgetter("original_text")}
+                | prompt
+                | llm
+                | StrOutputParser()
+        )
+        return trans.invoke({"original_text": text})
+
+    def generate(self, prompt, stop_sequences=["。\n\n", "\n\n\n"]):
+        params = {
+            GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
+            GenParams.MIN_NEW_TOKENS: 1,
+            GenParams.MAX_NEW_TOKENS: 1024,
+            GenParams.TEMPERATURE: 0,
+            GenParams.STOP_SEQUENCES: stop_sequences,
+            GenParams.REPETITION_PENALTY: 1
+        }
+
+        llm = Model(model_id=self.model_id, credentials=self.creds, params=params,
+                    project_id=self.project_id).to_langchain()
 
 
-
-    return llm(prompt)
+        return llm(prompt)
 def framework():
     items = {
         "環境保護相關議題":[
