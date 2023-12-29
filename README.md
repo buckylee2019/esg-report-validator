@@ -9,7 +9,6 @@
 ## Open Browser 
 
 1. Enter localhost:8501 in any preferred browser.
-
 ![Streamlit](image/ui.png)
 
 2. Upload your ESG Report
@@ -18,4 +17,4 @@
 3. Check sidebar
 4. Select Model, highly recommend llama2-70b-chat for Chinese Data
 5. Click “自動生成”!
-   [Generate](image/generate.png)
+![Generate](image/generate.png)
