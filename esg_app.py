@@ -2,6 +2,7 @@ import streamlit as st
 import numpy as np
 import json
 from langchain.vectorstores import Milvus
+from langchain.vectorstores import Chroma
 import re
 import os
 from utils.pdf2doc import toDocuments, extract_text_table
@@ -20,6 +21,7 @@ st.set_page_config(page_title="ESG Report Checker", page_icon="💡")
 st.title("ESG 報告檢核項目列表")
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+VECTOR_DB = os.getenv("VECTOR_DB")
 MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
 repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
@@ -31,6 +33,7 @@ embeddings = HuggingFaceHubEmbeddings(
 
 items = framework()
 PDF_FOLDER=os.getenv("UPLOAD_FOLDER","/app/pdfs/ESG")
+
 if not os.path.isdir(PDF_FOLDER): 
     os.makedirs(PDF_FOLDER) 
 with st.form("my-form", clear_on_submit=True):
@@ -46,24 +49,31 @@ with st.form("my-form", clear_on_submit=True):
             f.write(bytes_data)
         
         extracted = extract_text_table(fname_pdf)
-
-        index = Milvus.from_documents(
-            collection_name=collection_name,
-            documents=toDocuments([extracted['text']]),
-            embedding=embeddings,
-            index_params={
-                "metric_type":"COSINE",
-                "index_type":"IVF_FLAT",
-                "params":{"nlist":1024}
+        if VECTOR_DB == "Milvus":
+            index = Milvus.from_documents(
+                collection_name=collection_name,
+                documents=toDocuments([extracted['text']]),
+                embedding=embeddings,
+                index_params={
+                    "metric_type":"COSINE",
+                    "index_type":"IVF_FLAT",
+                    "params":{"nlist":1024}
+                    },
+                search_params = {
+                    "metric_type": "COSINE", 
+                    "offset": 5, 
+                    "ignore_growing": False, 
+                    "params": {"nprobe": 10}
                 },
-            search_params = {
-                "metric_type": "COSINE", 
-                "offset": 5, 
-                "ignore_growing": False, 
-                "params": {"nprobe": 10}
-            },
-            connection_args=MILVUS_CONNECTION
-            )
+                connection_args=MILVUS_CONNECTION
+                )
+        elif VECTOR_DB == "Chroma":
+            index = Chroma.from_documents(
+                    documents=toDocuments(extracted['text']),
+                    embedding=embeddings,
+                    collection_name=collection_name,
+                    persist_directory=os.environ.get("INDEX_NAME")
+                )
         os.remove(fname_pdf)
         uploaded_file = None
 
@@ -89,7 +99,7 @@ if generate:
             st.markdown("### 說明")
         st.divider()
         for it in items[key]:
-            vector_esg = vectorDB(collection)
+            vector_esg = vectorDB(collection = collection,db_select = VECTOR_DB)
             res = esgassist.generate_esg_chain(user_prompt=it,vector_instance=vector_esg.vectorstore())
             try:
                 res_json = json.loads(res)
