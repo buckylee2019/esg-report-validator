@@ -12,10 +12,10 @@
 1. Enter localhost:8501 in any preferred browser.
 ![Streamlit](image/ui.png)
 
-1. Upload your ESG Report
+2. Upload your ESG Report. Avoid Chinese File Name, because the collection name in Chroma only allowed english charaters and numbers.
 ![Upload File](image/upload.png)
 
-1. Check sidebar
-2. Select Model, highly recommend llama2-70b-chat for Chinese Data
-3. Click “自動生成”!
+3. Check sidebar to see if your ESG report is showed.
+4. Select Model, highly recommend llama2-70b-chat for Chinese Data
+5. Click “自動生成”!
 ![Generate](image/generate.png)
