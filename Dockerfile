@@ -8,7 +8,9 @@ RUN apt-get install -y curl wget git
 
 WORKDIR /app
 
-COPY . .
+COPY ./utils ./utils
+COPY esg_app.py esg_app.py
+COPY requirements.txt requirements.txt
 
 
 # Install any necessary packages specified in requirements.txt.

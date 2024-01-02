@@ -10,6 +10,7 @@ from glob import glob
 import os
 from langchain.schema import format_document
 from langchain.embeddings import HuggingFaceHubEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.prompts import PromptTemplate
 from operator import itemgetter
 from langchain.schema import StrOutputParser
@@ -36,22 +37,35 @@ else:
 
 MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+repo_id = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
+if HUGGINGFACEHUB_API_TOKEN!="":
+    embeddings = HuggingFaceHubEmbeddings(
+        task="feature-extraction",
+        repo_id = repo_id,
+        huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+    )
+else:
+    embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-mpnet-base-v2")
 
-embeddings = HuggingFaceHubEmbeddings(
-    task="feature-extraction",
-    repo_id = repo_id,
-    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
-)
+
 class vectorDB():
+    """
+        Initializes a vectorDB instance.
+
+        Parameters:
+        - collection (str): Name of the collection.
+        - db_select (str): Database selection, either "Chroma" or "Milvus". Default is "Chroma".
+    """
     def __init__(self,collection,db_select = "Chroma") -> None:
         self.collection_name = collection
         self.db_select = db_select
     def vectorstore(self):
-        '''
-        Default db_select: Chroma
-        can choose Chroma or Milvus
-        '''
+        """
+        Returns a vectorstore based on the specified database selection.
+
+        Returns:
+        - Milvus or Chroma: Depending on the value of db_select.
+        """
         if self.db_select == "Milvus":
             vectorstore = Milvus(
                 collection_name=self.collection_name,
@@ -90,9 +104,13 @@ def _combine_documents(
     doc_strings = [f"Document {idx+1}. \n{format_document(doc, document_prompt)}" for idx, doc in enumerate(docs)]
     return document_separator.join(doc_strings)
 
-def get_collection_list():
-    client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME","/app/ESG_REPORT"))
-    return [cols.name for cols in client.list_collections() if cols.name!="GRI"]
+def get_collection_list(db_select):
+    if db_select=="Chroma":
+        client = chromadb.PersistentClient(path=os.environ.get("INDEX_NAME","/app/ESG_REPORT"))
+        return [cols.name for cols in client.list_collections() if cols.name!="GRI"]
+    else:
+        from milvus_util import get_collection_list
+        return get_collection_list()
 
 def get_model_list():
     return [m for m in ModelTypes]
@@ -100,11 +118,27 @@ def get_model_list():
 class ESGAssistant:
 
     def __init__(self, model_id):
+        """
+        Initializes an ESGAssistant instance.
+
+        Parameters:
+        - model_id (str): Identifier for the Watson Machine Learning model.
+        """
         self.creds = creds
         self.project_id = project_id
         self.model_id  = model_id
 
     def generate_esg_chain(self, user_prompt, vector_instance):
+        """
+        Generates an ESG (Environmental, Social, Governance) chain.
+
+        Parameters:
+        - user_prompt (str): User's input prompt.
+        - vector_instance: An instance of the vectorDB class.
+
+        Returns:
+        - dict: Result of the ESG chain invocation.
+        """
         params = {
             GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
             GenParams.MIN_NEW_TOKENS: 30,
@@ -117,7 +151,8 @@ class ESGAssistant:
                     project_id=self.project_id).to_langchain()
 
         prompt = PromptTemplate.from_template(
-            '''[INST]<<SYS>>
+            '''
+            [INST]<<SYS>>
             You are an AI assistant responsible for guiding the review of an ESG (Environmental, Social, Governance) report. Follow the steps below:
 
             Summarize the content from the provided documents, using the following JSON format:
@@ -135,7 +170,8 @@ class ESGAssistant:
             % Documents
             {summarize}
 
-            Answer the {question} in JSON: [/INST]'''
+            Answer the {question} in JSON: [/INST]
+            '''
         )
 
         qa_chain_esg = (
@@ -151,6 +187,15 @@ class ESGAssistant:
         return qa_chain_esg.invoke({"question": user_prompt})
 
     def translate_chain(self, text):
+        """
+        Translates text from English to Chinese using a language model.
+
+        Parameters:
+        - text (str): Text to be translated.
+
+        Returns:
+        - dict: Result of the translation chain invocation.
+        """
         params = {
             GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
             GenParams.MIN_NEW_TOKENS: 1,
@@ -188,6 +233,16 @@ class ESGAssistant:
         return trans.invoke({"original_text": text})
 
     def generate(self, prompt, stop_sequences=["。\n\n", "\n\n\n"]):
+        """
+        Generates content based on the provided prompt.
+
+        Parameters:
+        - prompt (str): Input prompt for content generation.
+        - stop_sequences (list): List of stop sequences for content generation. Default is ["。\n\n", "\n\n\n"].
+
+        Returns:
+        - str: Generated content.
+        """
         params = {
             GenParams.DECODING_METHOD: DecodingMethods.GREEDY,
             GenParams.MIN_NEW_TOKENS: 1,

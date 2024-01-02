@@ -1,6 +1,6 @@
 pymupdf==1.23.6
 ibm-generative-ai==0.5.0
-ibm-watson-machine-learning==1.0.311
+ibm-watson-machine-learning==1.0.339
 langchain==0.0.333
 numpy==1.24.2
 pandas==1.5.3
@@ -11,3 +11,5 @@ rouge==1.0.1
 streamlit==1.24.1
 pymilvus
 huggingface_hub
+chromadb==0.4.21
+sentence-transformers==2.2.2
