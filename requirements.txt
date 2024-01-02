@@ -11,3 +11,5 @@ rouge==1.0.1
 streamlit==1.24.1
 pymilvus
 huggingface_hub
+chromadb==0.4.21
+sentence-transformers==2.2.2

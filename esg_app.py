@@ -5,31 +5,25 @@ from langchain.vectorstores import Milvus
 from langchain.vectorstores import Chroma
 import re
 import os
-from utils.pdf2doc import toDocuments, extract_text_table
-from langchain.embeddings import HuggingFaceHubEmbeddings
+from utils.pdf2doc import toDocuments, extract_text_table,embeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 
 
 import sys
 if os.getenv("ENABLE_WATSONX").lower()=="false":
-    from utils.esg_chain import ESGAssistant, framework, vectorDB,get_model_list
+    from utils.esg_chain import ESGAssistant, framework, vectorDB,get_model_list, get_collection_list
 else:
-    from utils.esg_chain_wx import ESGAssistant, framework, vectorDB,get_model_list
+    from utils.esg_chain_wx import ESGAssistant, framework, vectorDB,get_model_list, get_collection_list
 
-from utils.milvus_util import get_collection_list
+
 
 st.set_page_config(page_title="ESG Report Checker", page_icon="💡")
 st.title("ESG 報告檢核項目列表")
 
-HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
+
 VECTOR_DB = os.getenv("VECTOR_DB")
 MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
-repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
 
-embeddings = HuggingFaceHubEmbeddings(
-    task="feature-extraction",
-    repo_id = repo_id,
-    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
-)
 
 items = framework()
 PDF_FOLDER=os.getenv("UPLOAD_FOLDER","/app/pdfs/ESG")
@@ -69,7 +63,7 @@ with st.form("my-form", clear_on_submit=True):
                 )
         elif VECTOR_DB == "Chroma":
             index = Chroma.from_documents(
-                    documents=toDocuments(extracted['text']),
+                    documents=toDocuments([extracted['text']]),
                     embedding=embeddings,
                     collection_name=collection_name,
                     persist_directory=os.environ.get("INDEX_NAME")
@@ -77,7 +71,7 @@ with st.form("my-form", clear_on_submit=True):
         os.remove(fname_pdf)
         uploaded_file = None
 
-collection = st.sidebar.selectbox('ESG 報告',set(get_collection_list()))
+collection = st.sidebar.selectbox('ESG 報告',set(get_collection_list(VECTOR_DB)))
 model_id = st.sidebar.selectbox('Choose Model',set(get_model_list()))
 esgassist = ESGAssistant(model_id=model_id)
 

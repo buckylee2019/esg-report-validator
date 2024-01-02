@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 import sys
 from langchain.embeddings import HuggingFaceHubEmbeddings
+from langchain.embeddings import HuggingFaceEmbeddings
 
 
 from dotenv import load_dotenv
@@ -28,15 +29,16 @@ load_dotenv()
 
 
 HUGGINGFACEHUB_API_TOKEN = os.getenv("HUGGINGFACEHUB_API_TOKEN")
-repo_id = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+repo_id = "sentence-transformers/paraphrase-multilingual-mpnet-base-v2"
 MILVUS_CONNECTION={"host": os.environ.get("MILVUS_HOST"), "port": os.environ.get("MILVUS_PORT")}
-
-embeddings = HuggingFaceHubEmbeddings(
-    task="feature-extraction",
-    repo_id = repo_id,
-    huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
-)
-
+if HUGGINGFACEHUB_API_TOKEN!="":
+    embeddings = HuggingFaceHubEmbeddings(
+        task="feature-extraction",
+        repo_id = repo_id,
+        huggingfacehub_api_token = HUGGINGFACEHUB_API_TOKEN,
+    )
+else:
+    embeddings = HuggingFaceEmbeddings(model_name="paraphrase-multilingual-mpnet-base-v2")
 INDEX_NAME = os.getenv("INDEX_NAME")
 
 
