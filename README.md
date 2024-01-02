@@ -4,6 +4,7 @@
 
 `docker build . -t <YOUR IMAGE PREFER NAME>`
 
+
 `docker run -it -d -v <this repo>:/app -p 8501:8501 <YOUR IMAGE PREFER NAME>`
 
 
